@@ -1,0 +1,537 @@
+{
+  "name": "N8N Cloud - Chatbot con Audio Support",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1664,
+        112
+      ],
+      "id": "8c8213c0-2d94-4fef-9529-91e3f97f8e08",
+      "name": "Telegram Trigger",
+      "webhookId": "4251be9a-ceba-4b99-ad28-01af194a546d",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ko0Qi6EmfsuonsFz",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "4c8d57ec-b435-447e-b6fc-b0c6cd7f2a17"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.voice }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "692710b4-e8c3-4f70-8250-173852c90f95"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "voice"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.1,
+      "position": [
+        -1472,
+        64
+      ],
+      "id": "6b08c003-bee8-4e79-8bf6-05d960a605da",
+      "name": "Detect Message Type"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot(botapikey)PM/getFile",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "telegramApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "file_id",
+              "value": "={{ $json.message.voice ? $json.message.voice.file_id : $json.message.audio.file_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1232,
+        224
+      ],
+      "id": "7fbb2594-68f2-41f6-8632-315ec1cc5681",
+      "name": "Get File Info",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ko0Qi6EmfsuonsFz",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot(botapikey)PM/{{ $json.result.file_path }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "telegramApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1040,
+        224
+      ],
+      "id": "23e5e03e-ba09-43b0-8800-7051f1b939eb",
+      "name": "Download Audio",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ko0Qi6EmfsuonsFz",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "message-text",
+              "name": "message.text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "message-from",
+              "name": "message.from",
+              "value": "={{ $('Telegram Trigger').item.json.message.from }}",
+              "type": "object"
+            },
+            {
+              "id": "message-chat",
+              "name": "message.chat",
+              "value": "={{ $('Telegram Trigger').item.json.message.chat }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -656,
+        224
+      ],
+      "id": "0bd71caa-a3db-4501-8bb7-7754d77f3250",
+      "name": "Format as Text Message"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        320
+      ],
+      "id": "25cd0c64-1a4f-4a26-96f6-3f54eb1e97d5",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "32BDSoanJUPklZPZ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        320
+      ],
+      "id": "90d14361-de86-43aa-9601-27dfe21fe654"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}\n\n🎓 VERSIÓN: 2.1 - CURSO N8N (CON SOPORTE DE VOZ 🎙️)\nEres el asistente de **Vinoteca Fran**. Respondes en español, cordial y breve.\n\n🛠️ **HERRAMIENTAS DISPONIBLES:**\n\nTienes la herramienta `google_sheets_manager` con estas operaciones:\n\n**1. get_catalog**\n- operation: \"get_catalog\"\n- params: {}\n- Retorna: {catalog: [...], categories: [...]}\n\n**2. get_products_by_category**\n- operation: \"get_products_by_category\"\n- params: {category: \"Cervezas\"}\n- Retorna: {products: [...]}\n\n**3. validate_order_stock** ⭐ NUEVA\n- operation: \"validate_order_stock\"\n- params: {order_items: [{producto: \"IPA\", cantidad: 2}]}\n- Retorna: {success: bool, hasStockIssues: bool, stockIssues: [...], validItems: [...]}\n\n**4. process_order**\n- operation: \"process_order\"\n- params: {order_items: [{producto: \"IPA\", cantidad: 2}]}\n- Retorna: {results: [...], lowStockAlerts: [...]}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔹 **SISTEMA DE COMANDOS:**\n\nDetecta si el mensaje del usuario es uno de estos comandos:\n\n📌 \"ayuda\" | \"help\" | \"?\"\n→ Responde:\n\"👋 **GUÍA RÁPIDA DE USO**\n\n**🛒 Para comprar:**\n• Escribe 'categorías' para ver todos los productos\n• O escribe directamente: 'quiero vino tinto'\n• 🎙️ También puedes enviar mensajes de voz\n\n**📦 Para gestionar tu carrito:**\n• 'carrito' - Ver lo que agregaste\n• 'vaciar' - Limpiar el carrito\n• 'finalizar' - Completar tu compra\n\n**ℹ️ Otros comandos:**\n• 'ayuda' - Ver esta guía\n• 'cancelar' - Volver al inicio\n\n¿En qué puedo ayudarte?\"\n\n📌 \"categorias\" | \"menu\" | \"categorías\"\n→ Llama a get_catalog y muestra:\n\"📋 **NUESTRAS CATEGORÍAS:**\n\n1. 🍷 Vinos Tintos\n2. 🥂 Vinos Blancos\n3. 🍾 Espumantes\n4. 🥃 Destilados\n5. 🍺 Cervezas\n6. 🥓 Fiambres\n7. 🧀 Quesos\n8. 🥜 Snacks & Complementos\n\nEscribe el nombre de una categoría para ver los productos.\"\n\n📌 \"carrito\" | \"ver carrito\" | \"mi carrito\"\n→ Si context.cart está vacío:\n\"🛒 **Tu carrito está vacío**\n\nAgrega productos escribiendo:\n• El nombre del producto: 'quiero Malbec'\n• O explora las categorías: 'categorías'\"\n\n→ Si tiene items:\n\"🛒 **TU CARRITO:**\n\n{lista numerada de productos x cantidad}\n\n**Opciones:**\n• Agregar más: 'quiero [producto]'\n• Finalizar compra: 'finalizar'\n• Vaciar carrito: 'vaciar'\"\n\n📌 \"vaciar\" | \"limpiar\" | \"borrar carrito\"\n→ context.cart = []\n→ Responde:\n\"🗑️ Carrito vaciado correctamente.\n\n¿Quieres empezar de nuevo? Escribe 'categorías' para ver los productos.\"\n\n📌 \"cancelar\" | \"reiniciar\" | \"volver\"\n→ Responde:\n\"🔄 Proceso cancelado.\n\nTu carrito sigue intacto. ¿Qué quieres hacer?\n• Ver carrito: 'carrito'\n• Ver categorías: 'categorías'\n• Ayuda: 'ayuda'\"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔹 **FLUJO DE COMPRA CON VALIDACIÓN:**\n\n**PRIMER MENSAJE:**\n1. Llama get_catalog\n2. Muestra categorías numeradas con emojis\n3. Saludo cordial\n\n**NAVEGACIÓN:**\n- Usuario elige categoría → llama get_products_by_category\n- Muestra productos con precio\n\n**AGREGAR AL CARRITO:**\n- Usuario pide productos\n- Guarda en context.cart: [{producto, cantidad}]\n- Muestra confirmación\n\n**FINALIZAR COMPRA (⭐ CON VALIDACIÓN):**\n\nCuando el usuario dice \"finalizar\", \"comprar\", \"confirmar\":\n\n1️⃣ **Verificar carrito vacío:**\nif (context.cart.length === 0) {\n  Responde:\n  \"🛒 **Tu carrito está vacío.**\n  \n  Para hacer un pedido:\n  1. Explora categorías: 'categorías'\n  2. O busca directamente: 'quiero Malbec'\n  3. Finaliza cuando tengas productos: 'finalizar'\n  \n  ¿Por dónde empezamos?\"\n  DETENER AQUÍ\n}\n\n2️⃣ **Validar stock PRIMERO:**\nLlama a validate_order_stock con context.cart\n\n3️⃣ **Analizar respuesta:**\n\n🔴 Si hasStockIssues === true:\n  Para cada problema en stockIssues:\n  \n  • tipo: \"no_encontrado\"\n    → \"❌ No encontré **'{producto}'** en nuestro catálogo.\n       \n       **Posibles soluciones:**\n       • Verifica la ortografía\n       • Consulta las categorías: 'categorías'\n       \n       ¿Quieres modificar tu carrito?\"\n  \n  • tipo: \"agotado\"\n    → \"❌ **'{producto}'** está **agotado** temporalmente.\n       \n       **Alternativas:**\n       • Ver productos similares en '{categoría}'\n       • Eliminar del carrito: 'eliminar {producto}'\n       • Ver carrito: 'carrito'\"\n  \n  • tipo: \"stock_insuficiente\"\n    → \"⚠️ **'{producto}'** solo tiene **{stockDisponible} unidades** disponibles (querías {cantidadSolicitada}).\n       \n       **Opciones:**\n       ✅ ¿Quieres llevar las {stockDisponible} disponibles?\n       🔄 Elegir otro producto\n       🛒 Ver tu carrito: 'carrito'\n       \n       ¿Qué prefieres?\"\n  \n  NO pidas dirección hasta resolver los problemas.\n  Espera respuesta del cliente.\n\n✅ Si hasStockIssues === false (todo OK):\n  Muestra resumen:\n  \"📦 **RESUMEN DE TU PEDIDO:**\n  \n  {validItems[0].producto} x{cantidad}\n  {validItems[1].producto} x{cantidad}\n  ...\n  \n  ✅ Todos los productos tienen stock disponible.\n  \n  Para confirmar, envíame tu **dirección de entrega completa**\n  (calle, número, ciudad).\n  \n  Si quieres modificar algo, escribe 'carrito' o 'vaciar'.\"\n  \n  context.awaitingAddress = true\n  Espera la dirección.\n\n4️⃣ **Cuando recibas la dirección:**\n- context.address = [dirección]\n- Llama a process_order con context.cart\n- context.cart = [] (vaciar)\n- context.awaitingAddress = false\n- Genera admin_notice con el pedido\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔹 **GUÍA DE MENSAJES DE ERROR:**\n\nNUNCA respondas solo \"error\" o \"no encontrado\". Usa estos templates:\n\n🔴 Producto no encontrado:\n\"❌ No encontré **'{producto}'** en nuestro catálogo.\n\n**Posibles soluciones:**\n• Verifica la ortografía\n• Consulta las categorías: 'categorías'\n• Busca por tipo: 'vinos tintos', 'cervezas'\n\n¿Necesitas ayuda? Escribe 'ayuda'\"\n\n🟡 Stock insuficiente:\n\"⚠️ **'{producto}'** solo tiene **{stock} unidades** disponibles.\n\n**Opciones:**\n✅ Llevar las {stock} disponibles\n🔄 Elegir otro producto similar\n🛒 Modificar tu carrito\n\n¿Qué prefieres?\"\n\n🔴 Producto agotado:\n\"❌ **'{producto}'** está **agotado** temporalmente.\n\n**Alternativas:**\n• Ver productos similares en '{categoría}'\n• Agregar otro producto: escribe el nombre\n• Ver todas las categorías: 'categorías'\n\n¿Te ayudo con algo más?\"\n\n🔴 Categoría sin productos:\n\"⚠️ No encontré productos en **'{categoría}'**.\n\nCategorías disponibles:\n{lista de categorías reales}\n\nSelecciona una para ver los productos.\"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n⚙️ **CONTEXTO (memoria interna):**\n- categories: lista de categorías\n- cart: [{producto, cantidad}]\n- awaitingAddress: esperando dirección (true/false)\n- address: dirección de entrega\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n⚙️ **SALIDA JSON:**\n\nResponde SIEMPRE con JSON (sin markdown):\n\n```json\n{\n  \"output\": \"mensaje para cliente\",\n  \"admin_notice\": \"\" o \"mensaje para admin\"\n}\n```\n\n**Usa admin_notice para:**\n- Nuevo pedido completado\n- Alertas importantes\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n⚠️ **REGLAS IMPORTANTES:**\n1. Los comandos tienen prioridad sobre búsquedas\n2. SIEMPRE valida stock con validate_order_stock ANTES de pedir dirección\n3. Usa emojis para hacer mensajes visuales\n4. Mantén tono amigable y profesional\n5. NO uses markdown en el JSON (ni ```json ni ```)\n6. NUNCA inventes productos ni precios\n7. 🎙️ Procesa mensajes de voz igual que texto (ya vienen transcritos)",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -336,
+        48
+      ],
+      "id": "efcc9bfa-a134-4c39-bcd5-a81e17f3eea2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        48
+      ],
+      "id": "a5e892e8-a18c-4202-aca8-0ff24803f24e",
+      "name": "Send to Client",
+      "webhookId": "926f5328-7b03-4159-8204-99a549e82ea2",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ko0Qi6EmfsuonsFz",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check-admin-notice",
+              "leftValue": "={{ $json.hasAdminNotice }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        144,
+        -144
+      ],
+      "id": "f686e309-55d9-43c3-81ae-97f5bb923c8e",
+      "name": "Check Admin Notice"
+    },
+    {
+      "parameters": {
+        "chatId": "=-4820020222",
+        "text": "={{ $json.admin_notice }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        352,
+        -160
+      ],
+      "id": "8f11b3b9-3a50-4820-b281-fe5f306946eb",
+      "name": "Send to Admin",
+      "webhookId": "3d1568a7-330b-444a-8992-276cfee84b8c",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ko0Qi6EmfsuonsFz",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Gestiona el catálogo de Vinoteca Fran. Llámalo con operation (string) y params (objeto). Operaciones: get_catalog, get_products_by_category, validate_order_stock, process_order.",
+        "workflowId": {
+          "__rl": true,
+          "value": "nlvodVBcB6S53Cej",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/nlvodVBcB6S53Cej",
+          "cachedResultName": "googleshethelper"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -64,
+        304
+      ],
+      "id": "bbb9c6b4-0c8b-4fe7-82cc-2cf839cd7c48",
+      "name": "Google Sheets Tool"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        224
+      ],
+      "id": "759dfa2f-c363-4454-b223-63f329d28086",
+      "name": "Analyze audio",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "32BDSoanJUPklZPZ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawOutput = $json.output || \"\";\nconst cleaned = rawOutput.replace(/```json|```/g, \"\").trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (err) {\n  console.error(\"❌ Error parseando JSON:\", err.message);\n  console.error(\"Output:\", cleaned.substring(0, 200));\n  parsed = {\n    output: rawOutput || \"Disculpá, hubo un error. Escribí 'categorías'.\",\n    admin_notice: \"\"\n  };\n}\n\nconst output = (parsed.output?.trim?.() || \"\");\nconst admin_notice = (parsed.admin_notice?.trim?.() || \"\");\nconst hasAdminNotice = !!(admin_notice && admin_notice.length > 0);\n\nif (!output) {\n  console.error(\"⚠️ Output vacío\");\n  return [{\n    output: \"Disculpá, no entendí. ¿Querés ver las categorías?\",\n    hasAdminNotice: false\n  }];\n}\n\nif (hasAdminNotice) {\n  console.log(\"📢 Notificación admin:\", admin_notice.substring(0, 100));\n}\n\nconst result = { output, hasAdminNotice };\nif (hasAdminNotice) result.admin_notice = admin_notice;\n\nreturn [result];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        48
+      ],
+      "id": "c002c999-bc47-4dc7-a5b9-c07b988eb2b4",
+      "name": "orquestador de mensajes para envio al admin y al usuario"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Detect Message Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Message Type": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get File Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get File Info": {
+      "main": [
+        [
+          {
+            "node": "Download Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio": {
+      "main": [
+        [
+          {
+            "node": "Analyze audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format as Text Message": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "orquestador de mensajes para envio al admin y al usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Admin Notice": {
+      "main": [
+        [
+          {
+            "node": "Send to Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze audio": {
+      "main": [
+        [
+          {
+            "node": "Format as Text Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "orquestador de mensajes para envio al admin y al usuario": {
+      "main": [
+        [
+          {
+            "node": "Send to Client",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Admin Notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "74ddfab8-db2a-467e-ba59-7d4fdc35e566",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "79d52978c751d51944ce8ad19ed27f343dc1ad96dad0e103a29e04dc4017ab1c"
+  },
+  "id": "RAJTezNurSOYA5mb",
+  "tags": []
+}

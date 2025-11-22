@@ -1,0 +1,393 @@
+{
+  "name": "googleshethelper1000",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        192
+      ],
+      "id": "4dc0d621-2f25-4b5c-bb1d-03c5c5c7dc26",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtener datos del workflow que nos llamó\nconst inputData = $input.first().json;\n\nconsole.log('📥 Input recibido:', JSON.stringify(inputData));\n\n// Los datos vienen en query como string JSON, necesitamos parsearlo\nlet operation = '';\nlet params = {};\n\nif (inputData.query) {\n  try {\n    // Parsear el string JSON\n    const parsed = JSON.parse(inputData.query);\n    operation = parsed.operation || '';\n    params = parsed.params || {};\n  } catch (err) {\n    console.error('❌ Error parseando query:', err.message);\n    throw new Error('Query no es JSON válido');\n  }\n} else if (inputData.operation) {\n  // Fallback: si vienen directamente\n  operation = inputData.operation;\n  params = inputData.params || {};\n}\n\nconsole.log(`🔧 Operación solicitada: ${operation}`);\nconsole.log(`📋 Parámetros:`, JSON.stringify(params));\n\nif (!operation) {\n  throw new Error('No se especificó operation');\n}\n\nreturn [{\n  operation,\n  params,\n  requestId: Date.now()\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        192
+      ],
+      "id": "541a13d6-c060-42e1-87e0-455028491602",
+      "name": "Parse Request"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "14rUtq6CJ2Fk364WqpTWMFmLQAZuof1pHA7V2WzvfAIM",
+          "mode": "list",
+          "cachedResultName": "aaaaaa"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -464,
+        192
+      ],
+      "id": "b89dbd63-49c2-4ebb-b848-e7ceb51f151a",
+      "name": "Get All Products",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bxpMj2xinaasbJRx",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Request').item.json.operation }}",
+                    "rightValue": "get_catalog",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "get_catalog"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Request').item.json.operation }}",
+                    "rightValue": "get_products_by_category",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "get_products"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Request').item.json.operation }}",
+                    "rightValue": "process_order",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "process_order"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Request').item.json.operation }}",
+                    "rightValue": "validate_order_stock",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "validate_stock"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -256,
+        160
+      ],
+      "id": "a4015d06-c211-4662-9874-2b989402946f",
+      "name": "Route Operation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\n\nif (rows.length === 0) {\n  return [{ success: false, catalog: [], categories: [], error: 'No se encontraron datos' }];\n}\n\nconst catalog = rows.map(row => row.json);\nconst categories = [...new Set(catalog.map(item => item.Categoria))].filter(c => c).sort();\n\nconsole.log(`✅ Catálogo: ${catalog.length} productos, ${categories.length} categorías`);\n\nreturn [{\n  success: true,\n  catalog,\n  categories,\n  total_products: catalog.length\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        -16
+      ],
+      "id": "bb4c8d10-a296-4f06-8b0f-510ec2c9477d",
+      "name": "Process Catalog"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allData = $input.all();\nconst category = $('Parse Request').item.json.params.category;\n\nconst products = allData\n  .map(row => row.json)\n  .filter(item => item.Categoria?.toLowerCase() === category?.toLowerCase())\n  .sort((a, b) => a.Producto.localeCompare(b.Producto));\n\nconsole.log(`📦 ${category}: ${products.length} productos`);\n\nreturn [{\n  success: true,\n  category,\n  products,\n  total: products.length\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        192
+      ],
+      "id": "c413da9f-e400-4ece-8659-83863b57193c",
+      "name": "Filter By Category"
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('🔍 DEBUG Process Order');\n\nconst orderItems = $('Parse Request').item.json.params.order_items || [];\nconst allData = $input.all().map(row => row.json);\n\nconsole.log('🛒 Order items recibidos:', JSON.stringify(orderItems));\nconsole.log('📦 Total productos en catálogo:', allData.length);\n\nif (orderItems.length === 0) {\n  return [{ success: false, error: 'No hay items en el pedido' }];\n}\n\nconst results = [];\nconst lowStockAlerts = [];\nconst updates = [];\n\nfor (const item of orderItems) {\n  // LIMPIEZA: Remover bodega/marca del nombre si viene incluida\n  let productName = item.producto || '';\n  \n  // Si viene \"Golden Ale (Patagonia)\", extraer solo \"Golden Ale\"\n  const match = productName.match(/^([^(]+)/);\n  if (match) {\n    productName = match[1].trim();\n  }\n  \n  console.log(`🔍 Buscando: \"${item.producto}\" → Limpio: \"${productName}\"`);\n  \n  // Buscar el producto con el nombre limpio\n  const productIndex = allData.findIndex(p => \n    p.Producto?.toLowerCase().trim() === productName.toLowerCase().trim()\n  );\n  \n  if (productIndex === -1) {\n    console.error(`❌ No encontrado: \"${productName}\"`);\n    results.push({ \n      producto: item.producto, \n      success: false, \n      error: 'No encontrado' \n    });\n    continue;\n  }\n  \n  // ¡ENCONTRADO!\n  const product = allData[productIndex];\n  const currentStock = parseInt(product.Stock) || 0;\n  const newStock = Math.max(0, currentStock - item.cantidad);\n  \n  console.log(`✅ Encontrado: ${product.Producto} - Stock: ${currentStock} → ${newStock}`);\n  \n  // AGREGAR A UPDATES (esto es lo importante)\n  updates.push({\n    row: productIndex + 2,\n    producto: product.Producto,\n    stockAnterior: currentStock,\n    newStock\n  });\n  \n  // Verificar stock bajo\n  if (newStock < 5) {\n    lowStockAlerts.push({ producto: product.Producto, stock: newStock });\n  }\n  \n  results.push({\n    producto: product.Producto,\n    cantidad: item.cantidad,\n    stockAnterior: currentStock,\n    stockNuevo: newStock,\n    success: true\n  });\n}\n\nconsole.log(`🛒 Procesado: ${results.filter(r => r.success).length}/${results.length}`);\nconsole.log(`📝 Updates a aplicar: ${updates.length}`);\n\nreturn [{\n  success: true,\n  results,\n  lowStockAlerts,\n  updates,\n  totalProcessed: results.filter(r => r.success).length\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        384
+      ],
+      "id": "52e6d13d-867b-468d-94e2-a687b4f3bf87",
+      "name": "Process Order"
+    },
+    {
+      "parameters": {
+        "jsCode": "const processResult = $json;\nconst updates = processResult.updates || [];\n\nif (updates.length === 0) {\n  return [];\n}\n\nreturn updates.map(update => ({\n  row: update.row,\n  producto: update.producto,\n  newStock: update.newStock\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        384
+      ],
+      "id": "c24fe095-b301-4e8f-ad8b-1b85bebb7e0b",
+      "name": "Prepare Updates"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 🎓 FUNCIÓN: Validar Stock Sin Actualizar\n// Propósito: Verificar disponibilidad antes de confirmar al cliente\n\nconst orderItems = $('Parse Request').item.json.params.order_items || [];\nconst allData = $input.all().map(row => row.json);\n\nconsole.log('🔍 VALIDACIÓN: Verificando stock para:', orderItems);\n\n// Validación básica\nif (orderItems.length === 0) {\n  return [{ \n    success: false, \n    error: 'carrito_vacio',\n    mensaje: 'El carrito está vacío'\n  }];\n}\n\nconst stockIssues = [];    // Problemas encontrados\nconst validItems = [];     // Items que SÍ tienen stock\n\n// Revisar cada producto del pedido\nfor (const item of orderItems) {\n  \n  // 1️⃣ Limpiar nombre del producto (remover marca entre paréntesis)\n  let productName = item.producto || '';\n  const match = productName.match(/^([^(]+)/);\n  if (match) {\n    productName = match[1].trim();\n  }\n  \n  console.log(`🔍 Buscando: \"${item.producto}\" → Limpio: \"${productName}\"`);\n  \n  // 2️⃣ Buscar el producto en el catálogo\n  const product = allData.find(p => \n    p.Producto?.toLowerCase().trim() === productName.toLowerCase().trim()\n  );\n  \n  // 3️⃣ Verificar si existe el producto\n  if (!product) {\n    stockIssues.push({\n      producto: item.producto,\n      tipo: 'no_encontrado',\n      mensaje: `\"${item.producto}\" no existe en nuestro catálogo`,\n      sugerencia: 'Verifica el nombre o consulta las categorías disponibles'\n    });\n    continue;\n  }\n  \n  // 4️⃣ Verificar stock disponible\n  const currentStock = parseInt(product.Stock) || 0;\n  \n  if (currentStock === 0) {\n    // Producto agotado\n    stockIssues.push({\n      producto: product.Producto,\n      tipo: 'agotado',\n      mensaje: `\"${product.Producto}\" está agotado`,\n      stockDisponible: 0,\n      cantidadSolicitada: item.cantidad,\n      sugerencia: 'Prueba con otro producto similar'\n    });\n    \n  } else if (currentStock < item.cantidad) {\n    // Stock insuficiente\n    stockIssues.push({\n      producto: product.Producto,\n      tipo: 'stock_insuficiente',\n      mensaje: `\"${product.Producto}\" solo tiene ${currentStock} unidades disponibles`,\n      stockDisponible: currentStock,\n      cantidadSolicitada: item.cantidad,\n      sugerencia: `¿Quieres llevar ${currentStock} unidades en lugar de ${item.cantidad}?`\n    });\n    \n  } else {\n    // ✅ Stock suficiente\n    validItems.push({\n      producto: product.Producto,\n      cantidad: item.cantidad,\n      stockActual: currentStock,\n      precio: product.Precio,\n      ok: true\n    });\n  }\n}\n\n// 5️⃣ Resultado final\nconst hasIssues = stockIssues.length > 0;\n\nconsole.log(`✅ Validación completa: ${validItems.length} OK, ${stockIssues.length} problemas`);\n\nreturn [{\n  success: !hasIssues,\n  hasStockIssues: hasIssues,\n  stockIssues,\n  validItems,\n  canProceed: !hasIssues,\n  totalValidItems: validItems.length,\n  totalIssues: stockIssues.length\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        608
+      ],
+      "id": "3a9ece36-e658-4289-8fe5-00fe2bbf6763",
+      "name": "Validate Stock"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "14rUtq6CJ2Fk364WqpTWMFmLQAZuof1pHA7V2WzvfAIM",
+          "mode": "list",
+          "cachedResultName": "aaaaaa"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Producto": "={{ $json.producto }}",
+            "Stock": "={{ $json.newStock }}"
+          },
+          "matchingColumns": [
+            "Producto"
+          ],
+          "schema": [
+            {
+              "id": "Producto",
+              "displayName": "Producto",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Stock",
+              "displayName": "Stock",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        352,
+        384
+      ],
+      "id": "7f259b76-bb6b-4e15-842c-6c31c858eb20",
+      "name": "Update Stock",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bxpMj2xinaasbJRx",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Get All Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Products": {
+      "main": [
+        [
+          {
+            "node": "Route Operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Operation": {
+      "main": [
+        [
+          {
+            "node": "Process Catalog",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Filter By Category",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Order",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Order": {
+      "main": [
+        [
+          {
+            "node": "Prepare Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Updates": {
+      "main": [
+        [
+          {
+            "node": "Update Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "102ef602-ae6b-4b28-af46-64980ab18caa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "79d52978c751d51944ce8ad19ed27f343dc1ad96dad0e103a29e04dc4017ab1c"
+  },
+  "id": "MGCKegnp4WZDl17T",
+  "tags": []
+}
